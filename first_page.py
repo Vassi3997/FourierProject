@@ -1,4 +1,4 @@
-from math import radians
+from math import pi, radians
 import tkinter as tk
 from styling import CustomFrame    
 import math
@@ -13,50 +13,75 @@ class FirstPage(CustomFrame):
         self.cv = tk.Canvas(self)
         self.cv.pack()
         self.cv.place(relheight=0.98, relwidth=0.98, relx=0.01, rely=0.01)
+        self.cv.configure(scrollregion=(-480,-480,540,540))
         self.t1 = 0
-        self.old_small_circle = None
+        self.seq = 0
+
+        self.rings = 2
+        self.time_increment = 0.9
+        self.screen_update_time = 32
+        self.content_deletion_delay = 7 
+
+        self.center_secondary_circle = None
         self.wave = []
         self.iteration = 0
-        self.create_circle(480,540,self.radius,self.cv)
-        self.create_circle(480,540,5,self.cv,fill="black")
+        self.create_circle(0,0,5,self.cv,fill="black")
         self.revolvingCircle(self.t1)
 
-    def create_circle(self,x, y, radius, canvasName,fill=""): 
-        x0 = x - radius
-        y0 = y - radius
-        x1 = x + radius
-        y1 = y + radius
-        return canvasName.create_oval(x0, y0, x1, y1,fill=fill)
+    def create_circle(self,x, y, radius, canvasName,fill=""):
+        return canvasName.create_oval(x - radius, y - radius, x + radius, y + radius,fill=fill)
 
-    def delete_elements(self,element):
-        self.cv.delete(element)
+
+    def draw_wave(self,wave):
+
+        for i in range(1,len(wave)):
+            self.pattern = self.cv.create_line(600+i,wave[i-1],600+i,wave[i],fill="black",width="3")
+            self.after(self.screen_update_time+self.content_deletion_delay,self.cv.delete,self.pattern)
+
 
     def revolvingCircle(self,t1):
-        if self.old_small_circle is not None:
-            self.cv.delete(self.old_small_circle)
+        x = 0
+        y = 0
+        self.create_circle(0,0,self.radius*(4/( math.pi)),self.cv)
+
+        if self.center_secondary_circle is not None:
             self.cv.delete(self.line)
-            self.cv.delete(self.traveling_line)
-        t1 -= 1.5
-        
-        x = self.radius*math.cos(math.radians(t1))
-        y = self.radius*math.sin(math.radians(t1))
+            self.cv.delete(self.center_secondary_circle)
+            self.cv.delete(self.main_circle)
 
-        self.line = self.cv.create_line(480,540,x+480,y+540)
+        for i in range(self.rings):
+            prevX = x
+            prevY = y
+            n = 2*i + 1
+            
+            if self.center_secondary_circle is not None:
+                self.cv.delete(self.traveling_line)
+                self.after(self.screen_update_time+self.content_deletion_delay,self.cv.delete,self.line)
+                self.after(self.screen_update_time+self.content_deletion_delay,self.cv.delete,self.main_circle)
+                self.after(self.screen_update_time+self.content_deletion_delay,self.cv.delete,self.center_secondary_circle)
 
-        self.traveling_line = self.cv.create_line(x+480,y+540,960,y+540)
-        self.wave = [y+540] + self.wave
+            t1 -= self.time_increment
+            
+            self.new_radius = self.radius*(4/(n* math.pi))
 
-        for i in range(len(self.wave)):
-            self.pattern = self.create_circle(960+i,self.wave[i],3,self.cv,fill="black")
-            self.after(100,self.delete_elements,self.pattern)
+            x += self.new_radius*math.cos(n*math.radians(t1))
+            y += self.new_radius*math.sin(n*math.radians(t1))
 
-        self.old_small_circle=self.create_circle(x+480,y+540,5,self.cv,fill="black")
 
-        self.cv.delete(self.pattern)
+            self.main_circle = self.create_circle(prevX,prevY,self.new_radius,self.cv)
 
-        # if math.cos(math.radians(t1)) == 0.9999996192282494: #0.999999 :
-            # print("cycle")
-        if len(self.wave) > 540:
-            self.wave.pop(-1)
+            self.center_secondary_circle=self.create_circle(x,y,5,self.cv,fill="black")
 
-        self.after(100,self.revolvingCircle,t1)
+            self.line = self.cv.create_line(x,y,prevX,prevY,width="3")
+
+            self.traveling_line = self.cv.create_line(x,y,600,y,fill="red",width="3")
+
+        self.wave.insert(0,y)
+
+        if len(self.wave)>=2:
+            self.draw_wave(self.wave)
+
+        if len(self.wave)>700:
+            self.wave.pop()
+
+        self.after(self.screen_update_time,self.revolvingCircle,t1)
